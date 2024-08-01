@@ -151,7 +151,7 @@ class MIER:
             return all_returns
 
         def log_returns(mode):
-            task_idxs = np.arange(self.n_train_tasks) if mode == 'train' else \
+            task_idxs = np.random.choice(np.arange(self.n_train_tasks), 5) if mode == 'train' else \
                 np.arange(self.n_train_tasks, self.n_train_tasks + self.n_val_tasks)
 
             avg_return = np.mean(compute_returns(task_idxs))
