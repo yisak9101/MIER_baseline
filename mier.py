@@ -7,6 +7,7 @@ from data import TrajData, prepare_data, prepare_multitask_data, append_context_
     concatenate_traj_data, dict_diff, split_data_into_train_val, sample_from_buffer_and_append_context
 
 from misc_utils import avg_metrics_across_tasks, discard_term_states, print_model_losses
+import wandb
 
 class MIER:
 
@@ -15,6 +16,15 @@ class MIER:
         for key in variant:
             setattr(self, key, variant[key])
         setup(self)
+        wandb.login(key="7316f79887c82500a01a529518f2af73d5520255")
+        wandb.init(
+            entity='mlic_academic',
+            project='김정모_metaRL_baselines',
+            group=self.env_name,
+            name="mier-" + self.env_name + "-seed" + str(self.seed)
+        )
+        self.frames = 0
+        self.eval_interval = 10
 
     ################################## MIER  Training #####################################################
     def train(self):
@@ -41,7 +51,9 @@ class MIER:
                                      replace=self.model.meta_batch_size > self.n_train_tasks)
             # meta-train the model
             self.run_training_epoch(tasks, epoch)
-            self.eval_during_training(epoch)
+
+            if epoch % self.eval_interval == 0:
+                self.eval_during_training(epoch)
 
     def collect_data_for_metatraining(self, task_id, collect_with_updated_context=True):
 
@@ -49,12 +61,14 @@ class MIER:
         data = self.sampler.sample(self.num_sample_steps_prior, self.model.get_context())
         self.pre_adapt_replay_buffer.add(data, task_id)
         self.replay_buffer.add(data, task_id)
+        self.frames += self.num_sample_steps_prior
 
         if collect_with_updated_context:
             proc_data = prepare_data(data)
             updated_context = self.model.get_updated_context(proc_data[0], proc_data[1])
             post_update_data = self.sampler.sample(self.num_sample_steps_updated_context, updated_context)
             self.replay_buffer.add(post_update_data, task_id)
+            self.frames += self.num_sample_steps_updated_context
 
     def run_training_epoch(self, tasks, epoch):
 
@@ -143,11 +157,17 @@ class MIER:
             avg_return = np.mean(compute_returns(task_idxs))
             print('epoch ' + str(epoch), mode+'_avg_return', avg_return)
             self.logger.log_dict(epoch, {'eval/'+mode+'_avg_return': avg_return})
+            return avg_return
 
-        if self.eval_train_tasks:
-            log_returns('train')
-        if self.eval_val_tasks:
-            log_returns('val')
+        train_avg_return = log_returns('train')
+        test_avg_return = log_returns('val')
+
+        wandb_log_dict = {
+            "Eval/train_avg_return": train_avg_return,
+            "Eval/test_avg_return": test_avg_return,
+        }
+        wandb.log(wandb_log_dict, step=self.frames)
+
 
     def log_avg_meta_training_metrics(self, epoch, all_metrics, model, log_prefix):
 
