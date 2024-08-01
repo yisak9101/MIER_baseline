@@ -1,19 +1,19 @@
 import numpy as np
-from rand_param_envs.walker2d_rand_params import Walker2DRandParamsEnv
+from rand_param_envs.walker2d_mass_inter import Walker2DRandParamsEnv
 
 from . import register_env
 
-@register_env('walker-rand-params')
+@register_env('walker2d-mass-inter')
 class WalkerRandParamsWrappedEnv(Walker2DRandParamsEnv):
     def __init__(self, n_tasks=60, task_mode='standard'):
 
         self.task_mode = task_mode
         super(WalkerRandParamsWrappedEnv, self).__init__(log_scale_limit = 3.0)
         
-        if self.task_mode == 'standard':
-            self.tasks = self.sample_tasks(n_tasks)
-        elif self.task_mode == 'ood':
-            self.tasks = self.get_train_and_ood_tasks(n_tasks)
+        # if self.task_mode == 'standard':
+        self.tasks = self.sample_tasks(n_tasks)
+        # elif self.task_mode == 'ood':
+        #     self.tasks = self.get_train_and_ood_tasks(n_tasks)
         self.reset_task(0)
 
     def get_all_task_idx(self):

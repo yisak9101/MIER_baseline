@@ -1,9 +1,9 @@
-from rand_param_envs.hopper_rand_params import HopperRandParamsEnv
+from rand_param_envs.hopper_mass_inter import HopperRandParamsEnv
 
 from . import register_env
 
 
-@register_env('hopper-rand-params')
+@register_env('hopper-mass-inter')
 class HopperRandParamsWrappedEnv(HopperRandParamsEnv):
     def __init__(self, n_tasks=2, restricted_train_set=False):
         log_scale_limit = 1.0 if restricted_train_set else 3.0

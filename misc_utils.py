@@ -5,7 +5,8 @@ import csv
 import pprint
 import pickle
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from PIL import Image
 from gym import wrappers
 
