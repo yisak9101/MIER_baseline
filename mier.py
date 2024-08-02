@@ -7,7 +7,6 @@ from data import TrajData, prepare_data, prepare_multitask_data, append_context_
     concatenate_traj_data, dict_diff, split_data_into_train_val, sample_from_buffer_and_append_context
 
 from misc_utils import avg_metrics_across_tasks, discard_term_states, print_model_losses
-import wandb
 
 
 class MIER:
@@ -17,13 +16,6 @@ class MIER:
         for key in variant:
             setattr(self, key, variant[key])
         setup(self)
-        wandb.login(key="7316f79887c82500a01a529518f2af73d5520255")
-        wandb.init(
-            entity='mlic_academic',
-            project='김정모_metaRL_baselines',
-            group=self.wandb_group,
-            name="mier-" + self.env_name + "-seed" + str(self.seed)
-        )
         self.frames = 0
         self.eval_interval = 10
 
@@ -163,12 +155,6 @@ class MIER:
 
         train_avg_return = log_returns('train')
         test_avg_return = log_returns('val')
-
-        wandb_log_dict = {
-            "Eval/train_avg_return": train_avg_return,
-            "Eval/test_avg_return": test_avg_return,
-        }
-        wandb.log(wandb_log_dict, step=self.frames)
 
     def log_avg_meta_training_metrics(self, epoch, all_metrics, model, log_prefix):
 
