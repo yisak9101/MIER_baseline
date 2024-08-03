@@ -52,7 +52,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         #assert num_tasks == 130
         # np.random.seed(1337)
         velocities_train = []
-        for i in range(num_tasks):
+        for i in range(100):
             prob = random.random()
             if prob >= 0.5:
                 vel_train = random.uniform(0, 0.5)

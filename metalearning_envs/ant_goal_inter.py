@@ -34,7 +34,7 @@ class AntGoalEnv(MultitaskAntEnv):
 
     def sample_tasks(self, num_tasks):
         goal_train1 = []
-        for i in range(num_tasks):
+        for i in range(150):
             prob = random.random()  # np.random.uniform()
             if prob < 4.0 / 15.0:
                 r = random.random() ** 0.5  # [0, 1]

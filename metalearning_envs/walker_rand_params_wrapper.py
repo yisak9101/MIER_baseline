@@ -11,7 +11,7 @@ class WalkerRandParamsWrappedEnv(Walker2DRandParamsEnv):
         super(WalkerRandParamsWrappedEnv, self).__init__(log_scale_limit = 3.0)
         
         # if self.task_mode == 'standard':
-        self.tasks = self.sample_tasks(n_tasks)
+        self.tasks = self.sample_tasks(100)
         # elif self.task_mode == 'ood':
         #     self.tasks = self.get_train_and_ood_tasks(n_tasks)
         self.reset_task(0)

@@ -8,7 +8,7 @@ class HopperRandParamsWrappedEnv(HopperRandParamsEnv):
     def __init__(self, n_tasks=2, restricted_train_set=False):
         log_scale_limit = 1.0 if restricted_train_set else 3.0
         super(HopperRandParamsWrappedEnv, self).__init__(log_scale_limit = log_scale_limit)
-        self.tasks = self.sample_tasks(n_tasks)
+        self.tasks = self.sample_tasks(100)
         self.reset_task(0)
 
     def get_all_task_idx(self):
