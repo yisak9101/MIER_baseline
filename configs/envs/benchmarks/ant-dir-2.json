@@ -1,7 +1,7 @@
 {
   "env_name": "ant-dir-2",
   "wandb_group": "ant-dir-2개",
-  "num_train_epochs": 600,
+  "num_train_epochs": 10000,
   "num_tasks_sample": 5,
   "initial_exploration_repeats": 5,
   "num_sample_steps_prior": 400,

@@ -1,7 +1,7 @@
 {
   "env_name": "hopper-mass-inter",
   "wandb_group": "hopper-mass-inter",
-  "num_train_epochs": 1000,
+  "num_train_epochs": 10000,
   "initial_exploration_repeats": 5,
   "num_sample_steps_prior": 400,
   "num_sample_steps_updated_context":600,
