@@ -44,8 +44,8 @@ class MIER:
                 self.collect_data_for_metatraining(task_id, collect_with_updated_context=True)
 
             # saving models
-            if epoch % self.save_interval == 0:
-                self.save_models_and_buffers(epoch)
+            # if epoch % self.save_interval == 0:
+            #     self.save_models_and_buffers(epoch)
 
             # tasks for training this epoch
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
