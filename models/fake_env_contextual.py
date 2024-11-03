@@ -77,7 +77,7 @@ class FakeEnv:
         log_prob, dev = self._get_logprob(samples, model_means, model_vars)
 
         rewards, next_obs = samples[:, :1], samples[:, 1:]
-        terminals = self.termination_fn(obs, act, next_obs)
+        terminals = self.termination_fn(obs, act, next_obs) if self.termination_fn is not None else False
 
         batch_size = model_means.shape[0]
         return_means = np.concatenate((model_means[:, :1], terminals, model_means[:, 1:]), axis=-1)

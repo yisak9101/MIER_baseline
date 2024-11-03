@@ -33,6 +33,8 @@ def main(args):
 
     variant['log_dir'] = osp.join(os.environ.get('MIER_DATA_PATH'), variant['env_name'], run_mode,
                                   variant['log_annotation'] ,  variant_name, 'seed-' + str(variant['seed']))
+    
+    variant['max_path_length'] = args.max_path_length
 
     assert run_mode in [ "train", "extrapolate"]
     if run_mode == 'train':
@@ -42,12 +44,12 @@ def main(args):
 
 def get_variant_args():
     return [ ('num_training_steps_per_epoch', int), ('log_annotation',), ('fast_adapt_steps', int), ('task_id_for_extrapolation', int), 
-             ('cross_task_relabelling_for_testing', bool) , ('seed', int), ('load_model_itr', int) ]
+             ('cross_task_relabelling_for_testing', bool) , ('seed', int), ('load_model_itr', int), ('max_path_length', int) ]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("env_config", default=None)
 parser.add_argument("exp_config", default=None)
-
+# parser.add_argument("max_path_length", default=200)
 for variant_arg in get_variant_args():
     if len(variant_arg) == 1:
         parser.add_argument("--"+variant_arg[0], default=None)

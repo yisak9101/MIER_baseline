@@ -30,7 +30,7 @@ class GymEnvMaker(object):
 
 class ContextConditionedSimpleSampler(object):
 	
-	def __init__(self, env, policy , max_path_length ,  exploration_policy = None):
+	def __init__(self, env, policy , max_path_length ,  exploration_policy = None, ml_env_infos=None):
 		# self.env_fn = env_fn
 		self._env = env
 		self.policy = policy
@@ -40,8 +40,17 @@ class ContextConditionedSimpleSampler(object):
 		self._path_length = 0
 		self._current_observation = None
 
+		self.ml_env_infos = ml_env_infos
+		if ml_env_infos is not None:
+			self.train_env_name_list = ml_env_infos[0]
+			self.train_env_cls_list = ml_env_infos[1]
+			self.test_env_name_list = ml_env_infos[2]
+			self.test_env_cls_list = ml_env_infos[3]
+			self.ml_total_tasks = ml_env_infos[4]
+			self.total_envs = ml_env_infos[5]
+
 	def sample(self, max_samples, context=None, deterministic=False, max_episodes = None , exploration = False,
-	           return_infos = False):
+	           return_infos = False, task=None):
 
 		policy = self.exploration_policy if exploration else self.policy
 
@@ -56,7 +65,7 @@ class ContextConditionedSimpleSampler(object):
 			while n_steps_total < max_samples:
 
 				observations, actions, rewards, next_observations, dones, all_infos = \
-					self.rollout(context, policy,  remaining_samples=max_samples - n_steps_total)
+					self.rollout(context, policy,  remaining_samples=max_samples - n_steps_total, task=task)
 
 				trajData_lst.append(TrajData(observations, actions, rewards, next_observations, dones))
 				infos_across_trajs.append(all_infos)
@@ -69,7 +78,7 @@ class ContextConditionedSimpleSampler(object):
 		else:
 			return concatenate_traj_data(trajData_lst)
 
-	def rollout(self, context, policy, remaining_samples):
+	def rollout(self, context, policy, remaining_samples, task=None):
 
 		observations = []
 		actions = []
@@ -78,6 +87,12 @@ class ContextConditionedSimpleSampler(object):
 		dones = []
 		all_infos = []
 		remaining_samples = remaining_samples
+
+		# print("task", task)
+		# if self.ml_env_infos is not None: 
+		# 	self.reset_task(task)
+			# print("if self.ml_env_infos is not None  : task", task)
+
 		obs = self._env.reset()
 
 		for _ in range(self.max_path_length):
@@ -106,7 +121,17 @@ class ContextConditionedSimpleSampler(object):
 
 
 	def reset_task(self, task):
-		return self.unwrapped_env.reset_task(task)
+		if self.ml_env_infos is not None: 			
+			# print("self._env", self._env)
+			_env_name = self.total_envs[task]["ml_env_name"]
+			_subtask_idx = self.total_envs[task]["sub_task_idx"]
+			self._env = self.total_envs[task]["env_cls"]
+			self.env.set_task([_task for _task in self.ml_total_tasks if _task.env_name == _env_name][_subtask_idx])
+
+			if self.total_envs[task]["target_pos"] is not None:
+				self._env._target_pos = self.total_envs[task]["target_pos"]
+		else:
+			return self.unwrapped_env.reset_task(task)
 
 	def sample_tasks(self, num_tasks):
 		return self.unwrapped_env.sample_tasks(num_tasks)

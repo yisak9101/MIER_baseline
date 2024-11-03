@@ -17,10 +17,10 @@ class MIER:
         for key in variant:
             setattr(self, key, variant[key])
         setup(self)
-        wandb.login(key="7316f79887c82500a01a529518f2af73d5520255")
+        wandb.login(key="3207b7ce9e11a1c89ff4cba0bfff1d2cf9b626c5")
         wandb.init(
             entity='mlic_academic',
-            project='김정모_metaRL_baselines',
+            project='tavt_repro_2',
             group=self.wandb_group,
             name="mier-" + self.env_name + "-seed" + str(self.seed)
         )
@@ -32,13 +32,14 @@ class MIER:
 
         if self.pre_adapt_replay_buffer_load_path == None:
             print('initial exploration')
-            for task_id in range(self.n_train_tasks):
-                print('task', task_id)
+            for task_id in range(self.n_train_tasks):  # ml1 50
+                # print('task', task_id)
                 for _ in range(self.initial_exploration_repeats):
                     self.collect_data_for_metatraining(task_id, collect_with_updated_context=False)
 
         for epoch in range(self.num_train_epochs):
 
+            """ (1) Data collection """
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.num_tasks_sample)
             for task_id in tasks:
                 self.collect_data_for_metatraining(task_id, collect_with_updated_context=True)
@@ -47,19 +48,29 @@ class MIER:
             # if epoch % self.save_interval == 0:
             #     self.save_models_and_buffers(epoch)
 
-            # tasks for training this epoch
+
+
+
+            """ (2) training """
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
                                      replace=self.model.meta_batch_size > self.n_train_tasks)
             # meta-train the model
             self.run_training_epoch(tasks, epoch)
 
+
+
+
+            """ (3) evaluation """
             if epoch % self.eval_interval == 0:
                 self.eval_during_training(epoch)
+
+
+
 
     def collect_data_for_metatraining(self, task_id, collect_with_updated_context=True):
 
         self.sampler.reset_task(task_id)
-        data = self.sampler.sample(self.num_sample_steps_prior, self.model.get_context())
+        data = self.sampler.sample(self.num_sample_steps_prior, self.model.get_context(), task=task_id)
         self.pre_adapt_replay_buffer.add(data, task_id)
         self.replay_buffer.add(data, task_id)
         self.frames += self.num_sample_steps_prior
@@ -67,7 +78,7 @@ class MIER:
         if collect_with_updated_context:
             proc_data = prepare_data(data)
             updated_context = self.model.get_updated_context(proc_data[0], proc_data[1])
-            post_update_data = self.sampler.sample(self.num_sample_steps_updated_context, updated_context)
+            post_update_data = self.sampler.sample(self.num_sample_steps_updated_context, updated_context, task=task_id)
             self.replay_buffer.add(post_update_data, task_id)
             self.frames += self.num_sample_steps_updated_context
 
@@ -142,31 +153,42 @@ class MIER:
     def eval_during_training(self, epoch):
 
         def compute_returns(task_idxs):
-            all_returns = []
+            all_returns, successes = [], []
             for task_id in task_idxs:
                 self.sampler.reset_task(task_id)
-                data = self.sampler.sample(self.num_sample_steps_for_adaptation, self.model.get_context())
+                data = self.sampler.sample(self.num_sample_steps_for_adaptation, self.model.get_context(), task=task_id)
                 proc_data = prepare_data(data)
                 updated_context = self.model.get_updated_context(proc_data[0], proc_data[1])
-                all_returns.append(
-                    self.eval_single_task(epoch, updated_context, log_name='eval/perTask/Task_' + str(task_id)))
-            return all_returns
+                single_task_ret, single_task_suc = self.eval_single_task(epoch, updated_context, log_name='eval/perTask/Task_' + str(task_id), task=task_id)
+                all_returns.append(single_task_ret)
+                successes.append(single_task_suc)
+            return all_returns, successes
 
         def log_returns(mode):
             task_idxs = np.random.choice(np.arange(self.n_train_tasks), 5) if mode == 'train' else \
                 np.arange(self.n_train_tasks, self.n_train_tasks + self.n_val_tasks)
 
-            avg_return = np.mean(compute_returns(task_idxs))
+            tasks_returns, tasks_successes = compute_returns(task_idxs)
+            print("mode: ", mode)
+            print("task_idxs", task_idxs)
+            print("tasks_returns: ", tasks_returns)
+            print("tasks_successes", tasks_successes)
+
+            avg_return = np.mean(tasks_returns)
+            avg_success = np.mean(tasks_successes)
+
             print('epoch ' + str(epoch), mode + '_avg_return', avg_return)
             self.logger.log_dict(epoch, {'eval/' + mode + '_avg_return': avg_return})
-            return avg_return
+            return avg_return, avg_success
 
-        train_avg_return = log_returns('train')
-        test_avg_return = log_returns('val')
+        train_avg_return, train_avg_success = log_returns('train')
+        test_avg_return, test_avg_success = log_returns('val')
 
         wandb_log_dict = {
             "Eval/train_avg_return": train_avg_return,
+            "Eval/train_success_rate": train_avg_success,
             "Eval/test_avg_return": test_avg_return,
+            "Eval/test_success_rate": test_avg_success,
         }
         wandb.log(wandb_log_dict, step=self.frames)
 
@@ -349,21 +371,33 @@ class MIER:
 
         # self.sampler.reset_task(self.task_id_for_extrapolation)
         self.sampler.reset_task(task_id)
-        data = self.sampler.sample(num_env_samples, context)
+        data = self.sampler.sample(num_env_samples, context, task=task_id)
 
         if self.multi_task:
             self.replay_buffer.add(data, task_id=task_id)
         else:
             self.replay_buffer.add_traj(data)
 
-    def eval_single_task(self, epoch, context, log_name='return'):
+    def eval_single_task(self, epoch, context, log_name='return', task=None):
 
-        eval_data = self.sampler.sample(self.max_path_length, context, max_episodes=1, deterministic=True)
+        eval_data, infos = self.sampler.sample(self.max_path_length, context, max_episodes=1, deterministic=True, return_infos=True, task=task)
         _ret = sum(eval_data.rewards)
         self.logger.log_dict(epoch, {log_name: _ret}, '')
         if log_name == 'return':
             print('avg_return', _ret)
-        return _ret
+        
+        # print("infos[0]", infos[0], len(infos[0]))
+        # print("log_name", log_name)
+
+        if "ml" in self.env_name:
+            success_list = []
+            for info in infos[0]:
+                success_list.append(float(info["success"]))
+            success = sum(success_list) > 1.0
+        else:
+            success = 0.0
+
+        return _ret, success
 
     def _get_feed_dict_for_extrapolation(self, processed_data, model):
 
